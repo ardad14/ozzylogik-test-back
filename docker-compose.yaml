@@ -1,0 +1,80 @@
+version: '3.9'
+
+services:
+  ozzylogik-php:
+    build:
+      context: ./docker/php
+      dockerfile: Dockerfile
+    container_name: ozzylogik-php
+    volumes:
+      - ./:/var/www:rw
+      - ./docker/php/local.ini:/usr/local/etc/php/conf.d/local.ini
+    environment:
+      PHP_IDE_CONFIG: "serverName=ozzylogik_test"
+      XDEBUG_SESSION: docker-server
+    depends_on:
+      - ozzylogik-mongodb
+    networks:
+      - ozzylogik-network
+
+
+  ozzylogik-nginx:
+    image: nginx:alpine
+    container_name: ozzylogik-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./:/var/www
+      - ./docker/nginx/conf.d/:/etc/nginx/conf.d/
+      - ./docker/nginx/ssl:/etc/nginx/ssl
+    networks:
+      - ozzylogik-network
+
+  ozzylogik-mongodb:
+    image: mongo:latest
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: artem
+      MONGO_INITDB_ROOT_PASSWORD: root
+      MONGO_INITDB_DATABASE: ozzylogik
+    ports:
+      - '27017:27017'
+    volumes:
+      - ozzylogik-storage:/data/db
+    networks:
+      - ozzylogik-network
+
+
+  ozzylogik-elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.3.2
+    container_name: ozzylogik-elasticsearch
+    environment:
+      - discovery.type=single-node
+      - cluster.name=ozzylogik
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+      - xpack.security.enabled=false
+      - xpack.security.http.ssl.enabled=false
+    volumes:
+      - ozzylogik-elasticsearch:/data:rw
+    ports:
+      - 9200:9200
+    networks:
+      - ozzylogik-network
+
+volumes:
+  ozzylogik-storage:
+    name: ozzylogik-storage
+    driver: local
+
+  ozzylogik-elasticsearch:
+    name: ozzylogik-elasticsearch
+    driver: local
+
+networks:
+  ozzylogik-network:
+    driver: bridge
+
+
+
+
+
